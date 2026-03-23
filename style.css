@@ -14,7 +14,6 @@
 }
 
 * { box-sizing: border-box; }
-
 html, body {
   margin: 0; padding: 0; background: var(--bg); color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -29,16 +28,11 @@ html, body {
 .stats { display: flex; gap: 16px; font-size: 14px; color: var(--muted); }
 
 .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
-.pane {
-  background: var(--panel);
-  border: 1px solid #1d2346; border-radius: 10px; padding: 16px; min-height: 70vh;
-}
+.pane { background: var(--panel); border: 1px solid #1d2346; border-radius: 10px; padding: 16px; min-height: 70vh; }
 .left { display: flex; flex-direction: column; align-items: center; }
 .right { display: flex; flex-direction: column; }
 
-.click-wrap {
-  display: grid; place-items: center; margin: 8px 0 16px;
-}
+.click-wrap { display: grid; place-items: center; margin: 8px 0 16px; }
 #clicker {
   background: #0f1b3e; border: 2px solid #203063; border-radius: 999px;
   padding: 10px; cursor: pointer; transition: transform 80ms ease, filter 120ms ease;
@@ -81,33 +75,18 @@ button.danger:hover { background: #4b1a29; }
 .store-left { display: flex; flex-direction: column; gap: 3px; }
 .store-title { font-weight: 700; }
 .store-desc { color: var(--muted); font-size: 13px; }
+
 .buy-btn, .upgrade-btn {
   background: #1b2a5e; border: 1px solid #2f4186; padding: 8px 10px; border-radius: 6px; min-width: 130px;
 }
 .buy-btn:disabled, .upgrade-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.bulk-row {
-  display: flex; gap: 6px; margin-bottom: 8px;
-}
-.bulkBtn, .sellBtn {
-  background: #101737;
-  border: 1px solid #2c3e80;
-  padding: 5px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.bulkBtn.active, .sellBtn.active {
-  background: #1a275e;
-  border-color: #3a4bb0;
-}
+.bulk-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.bulkBtn, .sellBtn { background: #101737; border: 1px solid #2c3e80; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.bulkBtn.active, .sellBtn.active { background: #1a275e; border-color: #3a4bb0; }
 
-.grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px;
-}
-.achv {
-  background: #0f1736; border: 1px solid #26336b; padding: 8px; border-radius: 8px; text-align: center;
-  color: var(--muted); font-size: 12px;
-}
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.achv { background: #0f1736; border: 1px solid #26336b; padding: 8px; border-radius: 8px; text-align: center; color: var(--muted); font-size: 12px; }
 .achv.unlocked { color: var(--text); border-color: #3a5bd3; }
 
 #floatingTexts { position: relative; width: 220px; height: 0; overflow: visible; }
@@ -128,18 +107,8 @@ button.danger:hover { background: #4b1a29; }
 
 .tiny { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 0 16px; }
 
-.particle {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  background: #7cf7ff;
-  border-radius: 50%;
-  animation: pfade 600ms ease-out forwards;
-}
-@keyframes pfade {
-  0% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.1); }
-}
+.particle { position: absolute; width: 6px; height: 6px; background: #7cf7ff; border-radius: 50%; animation: pfade 600ms ease-out forwards; }
+@keyframes pfade { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.1); } }
 
 /* Light Theme */
 body.light {
@@ -151,8 +120,8 @@ body.light {
   --btn: #e8edff;
   --btn-border: #c9d6ff;
 }
+
 @media (max-width: 980px) {
   .layout { grid-template-columns: 1fr; }
   .stats { flex-wrap: wrap; gap: 8px; }
 }
-``
