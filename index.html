@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <title>Star Forge Clicker</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="style.css" />
-  <script defer src="game.js"></script>
+  style.css
+  game.js</script>
 </head>
 <body>
   <header class="topbar">
@@ -23,7 +23,7 @@
     <section class="pane left">
       <div class="click-wrap">
         <button id="clicker" aria-label="Tap to forge energy">
-          <!-- Original SVG “core” -->
+          <!-- Original SVG “energy core” -->
           <svg viewBox="0 0 200 200" width="220" height="220">
             <defs>
               <radialGradient id="g" cx="50%" cy="50%" r="50%">
@@ -127,13 +127,12 @@
             Mute sounds
           </label>
 
-          <!-- Cloud save (optional; needs a backend) -->
           <div class="cloud-row">
             <input id="cloudId" placeholder="Cloud ID (choose any id)" />
             <button id="cloudSaveBtn">Cloud Save</button>
             <button id="cloudLoadBtn">Cloud Load</button>
           </div>
-          <small class="muted">Cloud save requires a tiny backend; stubs are included in game.js.</small>
+          <small class="muted">Cloud save needs a tiny backend; stubs are included in game.js.</small>
         </div>
       </div>
     </section>
