@@ -10,42 +10,34 @@
 // ---------- Helpers ----------
 const $  = (q) => document.querySelector(q);
 const $$ = (q) => Array.from(document.querySelectorAll(q));
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const SAVE_KEY = "starforge-save-v2"; // bump if you change save schema
+const SAVE_KEY = "starforge-save-v2"; // bump if the save schema changes
 
-// number formatting
 function fmt(n) {
   const f = S.numberFormat || "compact";
   if (!isFinite(n)) return "∞";
   if (f === "full") return Math.floor(n).toLocaleString();
   if (f === "scientific") {
     if (n === 0) return "0";
-    const neg = n < 0;
-    n = Math.abs(n);
+    const neg = n < 0; n = Math.abs(n);
     const e = Math.floor(Math.log10(n));
     const m = n / Math.pow(10, e);
-    return `${neg?"-":""}${m.toFixed(3)}e${e}`;
+    return `${neg ? "-" : ""}${m.toFixed(3)}e${e}`;
   }
   // compact
   const units = ["","K","M","B","T","Qa","Qi","Sx","Sp","Oc","No","Dc","Ud","Dd","Td"];
-  const neg = n < 0;
-  n = Math.abs(n);
+  const neg = n < 0; n = Math.abs(n);
   let u = 0;
   while (n >= 1000 && u < units.length - 1) { n /= 1000; u++; }
   const digits = n >= 100 ? 0 : n >= 10 ? 1 : 2;
   return `${neg?"-":""}${n.toFixed(digits)}${units[u]}`;
 }
 
-// batch cost for n items (accounts for floor per step by iterating up to 100)
+// cost helpers
+function buildingCost(b) { return Math.floor(b.baseCost * Math.pow(1.15, b.count)); }
 function bulkCost(b, n) {
   let sum = 0;
-  for (let k = 0; k < n; k++) {
-    sum += Math.floor(b.baseCost * Math.pow(1.15, b.count + k));
-  }
+  for (let k = 0; k < n; k++) sum += Math.floor(b.baseCost * Math.pow(1.15, b.count + k));
   return sum;
-}
-function buildingCost(b) {
-  return Math.floor(b.baseCost * Math.pow(1.15, b.count));
 }
 
 // ---------- Base State ----------
@@ -87,58 +79,48 @@ const BUILDINGS = [
   ["Star Core Drill", "Extreme probing, extreme output.", 30_000_000, 150_000],
   ["Nebula Processor", "Gas to gigawatts.", 80_000_000, 400_000],
   ["Galaxy Splitter", "Don’t worry, just metaphorical.", 200_000_000, 1_000_000],
-  ["Time Rift Foundry", "Energy from future IOUs.", 500_000_000, 2,500,000],
+  ["Time Rift Foundry", "Energy from future IOUs.", 500_000_000, 2_500_000],  // ← fixed
   ["Singularity Reactor", "Swirls of almost‑forever power.", 1_200_000_000, 6_000_000],
 ];
 
 const UPGRADE_DEFS = [
   // id, title, desc, cost, condition(state)->bool, effect(state)->void
-  ["click-core-1","Harmonic Capacitors","+1 EPC", 100,
-    s=>true, s=>{ s.epcBase += 1; }],
-  ["click-core-2","Quantum Haptics","+2 EPC", 1_500,
-    s=>s.upgradesBought["click-core-1"], s=>{ s.epcBase += 2; }],
-  ["global-mult-1","Phase Alignment","+25% global EPS", 3_500,
-    s=>totalBuildings(s)>=10, s=>{ s.epsMult *= 1.25; }],
-  ["global-mult-2","Zero‑Point Tuning","+50% global EPS", 50_000,
-    s=>totalBuildings(s)>=25, s=>{ s.epsMult *= 1.5; }],
+  ["click-core-1","Harmonic Capacitors","+1 EPC", 100,    s=>true,                         s=>{ s.epcBase += 1; }],
+  ["click-core-2","Quantum Haptics","+2 EPC",     1_500,  s=>s.upgradesBought["click-core-1"], s=>{ s.epcBase += 2; }],
+  ["global-mult-1","Phase Alignment","+25% global EPS", 3_500, s=>totalBuildings(s)>=10,  s=>{ s.epsMult *= 1.25; }],
+  ["global-mult-2","Zero‑Point Tuning","+50% global EPS", 50_000, s=>totalBuildings(s)>=25, s=>{ s.epsMult *= 1.5; }],
   // Building milestone upgrades (10 / 25 / 50)
   ...BUILDINGS.flatMap((b, idx) => ([
-    [`b${idx}-x2-10`, `${b[0]} Calibration`, `Doubles ${b[0]} output`, Math.floor(b[2]*8),
-      s=>countOf(s, idx)>=10, s=>mulBuilding(idx, 2)],
-    [`b${idx}-x2-25`, `${b[0]} Overclock`, `Doubles ${b[0]} output again`, Math.floor(b[2]*32),
-      s=>countOf(s, idx)>=25, s=>mulBuilding(idx, 2)],
-    [`b${idx}-x2-50`, `${b[0]} Quantum Twin`, `Doubles ${b[0]} output once more`, Math.floor(b[2]*128),
-      s=>countOf(s, idx)>=50, s=>mulBuilding(idx, 2)],
+    [`b${idx}-x2-10`, `${b[0]} Calibration`,  `Doubles ${b[0]} output`, Math.floor(b[2]*8),   s=>countOf(s, idx)>=10,  s=>mulBuilding(idx, 2)],
+    [`b${idx}-x2-25`, `${b[0]} Overclock`,    `Doubles ${b[0]} output again`, Math.floor(b[2]*32), s=>countOf(s, idx)>=25, s=>mulBuilding(idx, 2)],
+    [`b${idx}-x2-50`, `${b[0]} Quantum Twin`, `Doubles ${b[0]} output once more`, Math.floor(b[2]*128), s=>countOf(s, idx)>=50, s=>mulBuilding(idx, 2)],
   ])),
 ];
 
 // Synergy upgrades (A boosts B)
 const SYNERGIES = [
-  { id:"syn-0-1", from:0, to:1, name:"Nano‑Drone Mesh",  desc:"Quantum Drones +2% EPS per Nano Miner",       cost: 50_000,  pct:1.02 },
-  { id:"syn-3-6", from:3, to:6, name:"Photon‑Asteroid",  desc:"Asteroid Factories +3% EPS per Photon Collector", cost: 300_000, pct:1.03 },
-  { id:"syn-5-9", from:5, to:9, name:"Stellar‑Gravity",  desc:"Gravity Well Harvesters +1.5% per Stellar Extractor", cost: 800_000, pct:1.015 },
-  { id:"syn-10-12",from:10,to:12,name:"Antimatter‑Siphon",desc:"Dimensional Siphons +4% per Antimatter Forge", cost: 5_000_000, pct:1.04 },
+  { id:"syn-0-1",  from:0,  to:1,  name:"Nano‑Drone Mesh",   desc:"Quantum Drones +2% EPS per Nano Miner",             cost: 50_000,     pct: 1.02  },
+  { id:"syn-3-6",  from:3,  to:6,  name:"Photon‑Asteroid",   desc:"Asteroid Factories +3% EPS per Photon Collector",  cost: 300_000,    pct: 1.03  },
+  { id:"syn-5-9",  from:5,  to:9,  name:"Stellar‑Gravity",   desc:"Gravity Well Harvesters +1.5% per Stellar Extractor", cost: 800_000,  pct: 1.015 },
+  { id:"syn-10-12",from:10, to:12, name:"Antimatter‑Siphon", desc:"Dimensional Siphons +4% per Antimatter Forge",     cost: 5_000_000,  pct: 1.04  },
 ];
 SYNERGIES.forEach(syn=>{
-  UPGRADE_DEFS.push([
-    syn.id, syn.name, syn.desc, syn.cost,
-    s=>totalBuildings(s)>=25, s=>{ s.upgradesBought[syn.id] = true; }
-  ]);
+  UPGRADE_DEFS.push([ syn.id, syn.name, syn.desc, syn.cost, s=>totalBuildings(s)>=25, s=>{ s.upgradesBought[syn.id] = true; } ]);
 });
 
 const ACHIEVEMENTS = [
   // id, title, desc, check(state)->bool
-  ["first-click","First Spark","Click once", s=>s.totalEnergy>=1],
-  ["ten-clicks","Warming Up","Reach 100 total energy", s=>s.totalEnergy>=100],
-  ["builder-1","Getting Crew","Own 10 buildings total", s=>totalBuildings(s)>=10],
-  ["builder-2","Factory Floor","Own 50 buildings total", s=>totalBuildings(s)>=50],
-  ["builder-3","Industrial Age","Own 200 buildings total", s=>totalBuildings(s)>=200],
-  ["eps-1","It’s Moving","Reach 100 EPS", s=>calcEPS(s)>=100],
-  ["eps-2","Powerhouse","Reach 5,000 EPS", s=>calcEPS(s)>=5000],
-  ["eps-3","Star Foundry","Reach 250,000 EPS", s=>calcEPS(s)>=250000],
+  ["first-click","First Spark","Click once",                       s=>s.totalEnergy>=1],
+  ["ten-clicks","Warming Up","Reach 100 total energy",             s=>s.totalEnergy>=100],
+  ["builder-1","Getting Crew","Own 10 buildings total",            s=>totalBuildings(s)>=10],
+  ["builder-2","Factory Floor","Own 50 buildings total",           s=>totalBuildings(s)>=50],
+  ["builder-3","Industrial Age","Own 200 buildings total",         s=>totalBuildings(s)>=200],
+  ["eps-1","It’s Moving","Reach 100 EPS",                          s=>calcEPS(s)>=100],
+  ["eps-2","Powerhouse","Reach 5,000 EPS",                         s=>calcEPS(s)>=5000],
+  ["eps-3","Star Foundry","Reach 250,000 EPS",                     s=>calcEPS(s)>=250000],
 ]; // Each unlocked = +1% global EPS (multiplicative)
 
-// ---------- Derived helpers & calculations ----------
+// ---------- State & derived ----------
 let S = structuredClone(baseState);
 let lastTick = performance.now();
 let bulkBuy = 1;
@@ -154,18 +136,13 @@ function ensureBuildings(s) {
 function totalBuildings(s){ return s.buildings.reduce((a,b)=>a+b.count,0); }
 function countOf(s,i){ return s.buildings[i]?.count||0; }
 function mulBuilding(idx, mult){ S.buildings[idx].epsMult *= mult; }
-function achievementMult(s){
-  const unlockedCount = Object.values(s.achievements).filter(Boolean).length;
-  return Math.pow(1.01, unlockedCount);
-}
-function starlightMultiplier(s){
-  return 1 + s.starlight * 0.10; // 10% per starlight
-}
+function achievementMult(s){ return Math.pow(1.01, Object.values(s.achievements).filter(Boolean).length); }
+function starlightMultiplier(s){ return 1 + s.starlight * 0.10; } // 10% per starlight
+
 function synergyMultFor(s, idx) {
   // product of multipliers affecting building idx
   return SYNERGIES.reduce((m, syn)=>{
-    if (!s.upgradesBought[syn.id]) return m;
-    if (syn.to !== idx) return m;
+    if (!s.upgradesBought[syn.id] || syn.to !== idx) return m;
     const fromCount = s.buildings[syn.from].count;
     return m * Math.pow(syn.pct, fromCount);
   }, 1);
@@ -175,9 +152,7 @@ function calcEPS(s) {
     sum + b.count * b.epsBase * b.epsMult * synergyMultFor(s, i), 0);
   return base * s.epsMult * achievementMult(s) * starlightMultiplier(s);
 }
-function calcEPC(s){
-  return s.epcBase * s.epcMult * starlightMultiplier(s);
-}
+function calcEPC(s){ return s.epcBase * s.epcMult * starlightMultiplier(s); }
 
 // ---------- UI refs ----------
 const energyDisplay = $("#energyDisplay");
@@ -213,9 +188,7 @@ function load() {
     const obj = JSON.parse(raw);
     S = Object.assign(structuredClone(baseState), obj);
     ensureBuildings(S);
-  } catch (e) {
-    console.warn("Failed to load save", e);
-  }
+  } catch (e) { console.warn("Failed to load save", e); }
 }
 function hardReset() {
   if (!confirm("This will erase ALL progress. Continue?")) return;
@@ -251,24 +224,13 @@ $("#confirmImportBtn").addEventListener("click", () => {
 });
 
 // ---------- Settings ----------
-$("#autosaveInterval").addEventListener("change", (e)=>{
-  S.autosaveSeconds = Number(e.target.value);
-});
-$("#reducedMotion").addEventListener("change", (e)=>{
-  S.reducedMotion = e.target.checked;
-});
-$("#numberFormat").addEventListener("change", (e)=>{
-  S.numberFormat = e.target.value;
-  renderAll();
-});
+$("#autosaveInterval").addEventListener("change", (e)=>{ S.autosaveSeconds = Number(e.target.value); });
+$("#reducedMotion").addEventListener("change", (e)=>{ S.reducedMotion = e.target.checked; });
+$("#numberFormat").addEventListener("change", (e)=>{ S.numberFormat = e.target.value; renderAll(); });
 $("#themeToggle").addEventListener("change", (e)=>{
-  if (e.target.checked) {
-    document.body.classList.add("light");
-    S.theme = "light";
-  } else {
-    document.body.classList.remove("light");
-    S.theme = "dark";
-  }
+  const light = e.target.checked;
+  document.body.classList.toggle("light", light);
+  S.theme = light ? "light" : "dark";
 });
 $("#muteToggle").addEventListener("change", (e)=>{ S.muted = e.target.checked; });
 $("#cloudSaveBtn").addEventListener("click", cloudSave);
@@ -276,8 +238,8 @@ $("#cloudLoadBtn").addEventListener("click", cloudLoad);
 $("#sellToggle").addEventListener("click", ()=>{
   sellingMode = !sellingMode;
   $("#sellToggle").classList.toggle("active", sellingMode);
+  renderStore();
 });
-
 $$(".bulkBtn").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     bulkBuy = Number(btn.dataset.bulk);
@@ -308,10 +270,7 @@ function starlightGainFor(s){
 }
 $("#prestigeBtn").addEventListener("click", () => {
   const gain = starlightGainFor(S);
-  if (gain <= 0) {
-    alert("Not enough progress to gain Starlight yet.");
-    return;
-  }
+  if (gain <= 0) { alert("Not enough progress to gain Starlight yet."); return; }
   if (!confirm(`Transcend now and gain ${gain} Starlight?\nThis resets buildings, upgrades, and energy.`)) return;
 
   const keep = {
@@ -386,10 +345,11 @@ function renderUpgrades(){
 function renderAchievements(){
   achvDiv.innerHTML = "";
   ACHIEVEMENTS.forEach(a=>{
-    const unlocked = !!S.achievements[a[0]];
+    const [id, title, desc] = a;
+    const unlocked = !!S.achievements[id];
     const el = document.createElement("div");
     el.className = "achv" + (unlocked?" unlocked":"");
-    el.innerHTML = `<div><strong>${a[1]}</strong></div><div>${a[2]}</div>`;
+    el.innerHTML = `<div><strong>${title}</strong></div><div>${desc}</div>`;
     achvDiv.appendChild(el);
   });
 }
@@ -405,12 +365,7 @@ function renderStats(){
   prestigeGainPreview.textContent = starlightGainFor(S);
 }
 
-function renderAll(){
-  renderStats();
-  renderStore();
-  renderUpgrades();
-  renderAchievements();
-}
+function renderAll(){ renderStats(); renderStore(); renderUpgrades(); renderAchievements(); }
 
 // ---------- Purchases ----------
 function buyOrSellBuilding(i){
@@ -423,10 +378,9 @@ function buyOrSellBuilding(i){
     S.energy += refund;
     renderAll();
     return;
-    }
+  }
 
-  // buying
-  // do up to bulkBuy iterations (<=100) to honor per-step floor cost
+  // buy up to bulkBuy
   let purchased = 0;
   for (let n = 0; n < bulkBuy; n++) {
     const cost = buildingCost(b);
@@ -446,16 +400,15 @@ function buyUpgrade(id){
   if (S.energy < cost) return;
   S.energy -= cost;
   S.upgradesBought[id] = true;
-  const effect = up[5];
-  effect(S);
+  upS; // apply effect
   renderAll();
 }
 
-// ---------- Achievements check ----------
+// ---------- Achievements ----------
 function checkAchievements(){
   let changed = false;
   ACHIEVEMENTS.forEach(a=>{
-    const [id,, , cond] = [a[0], a[1], a[2], a[3]];
+    const [id,, , cond] = a;
     if (!S.achievements[id] && cond(S)) {
       S.achievements[id] = true;
       changed = true;
@@ -464,30 +417,26 @@ function checkAchievements(){
   if (changed) renderAchievements();
 }
 
-// ---------- Click handling: EPC, floating numbers, particles, sound ----------
+// ---------- Click: EPC, particles, sound ----------
 clicker.addEventListener("click", (e)=>{
   const gain = calcEPC(S);
   S.energy += gain;
   S.totalEnergy += gain;
 
-  // click sound (WebAudio beep)
+  // simple beep (WebAudio)
   if (!S.muted) {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const o = ctx.createOscillator();
       const g = ctx.createGain();
-      o.type = "sine";
-      o.frequency.value = 880;
-      g.gain.value = 0.04;
-      o.connect(g); g.connect(ctx.destination);
-      o.start();
+      o.type = "sine"; o.frequency.value = 880; g.gain.value = 0.04;
+      o.connect(g); g.connect(ctx.destination); o.start();
       setTimeout(()=>{ o.stop(); ctx.close(); }, 60);
     } catch {}
   }
 
   floating(`+${fmt(gain)}`);
   particleBurst(e);
-
   renderStats();
 });
 
@@ -504,7 +453,7 @@ function particleBurst(e){
   if (S.reducedMotion) return;
   const rect = clicker.getBoundingClientRect();
   const originX = e.clientX - rect.left;
-  const originY = e.clientY - rect.top - rect.height/2; // visually centered above
+  const originY = e.clientY - rect.top - rect.height/2;
   for (let i=0;i<12;i++){
     const p = document.createElement("div");
     p.className="particle";
@@ -518,10 +467,7 @@ function particleBurst(e){
 // ---------- Random Event: Solar Surge ----------
 let nextEventAt = scheduleEvent();
 let surgeUntil = 0;
-function scheduleEvent(){
-  const now = performance.now();
-  return now + (120_000 + Math.random()*180_000); // 2–5 min
-}
+function scheduleEvent(){ return performance.now() + (120_000 + Math.random()*180_000); } // 2–5 min
 function maybeSpawnEvent(now){
   if (now < nextEventAt) return;
   if ($("#solarSurge")) return;
@@ -533,34 +479,27 @@ function maybeSpawnEvent(now){
   btn.title = "Click for a 10× boost for 30s (or a small burst early game)";
   btn.addEventListener("click", ()=>{
     const eps = calcEPS(S);
-    if (eps > 0) {
-      surgeUntil = performance.now() + 30_000;
-    } else {
-      S.energy += 77; // early-game nudge
-    }
+    if (eps > 0) surgeUntil = performance.now() + 30_000;
+    else S.energy += 77;
     btn.remove();
     nextEventAt = scheduleEvent();
   });
   eventArea.appendChild(btn);
 }
 
-// ---------- Game loop ----------
+// ---------- Loop ----------
 let autosaveTimer = 0;
 function loop(now){
-  const dt = (now - lastTick) / 1000;
-  lastTick = now;
+  const dt = (now - lastTick) / 1000; lastTick = now;
 
   // EPS production (10× during surge)
   let eps = calcEPS(S);
   if (now < surgeUntil) eps *= 10;
   const gained = eps * dt;
-  S.energy += gained;
-  S.totalEnergy += gained;
+  S.energy += gained; S.totalEnergy += gained;
 
   autosaveTimer += dt;
-  if (autosaveTimer >= S.autosaveSeconds) {
-    save(); autosaveTimer = 0;
-  }
+  if (autosaveTimer >= S.autosaveSeconds) { save(); autosaveTimer = 0; }
 
   if (Math.floor(now/1000) % 2 === 0) checkAchievements();
   maybeSpawnEvent(now);
@@ -570,13 +509,10 @@ function loop(now){
 }
 
 // ---------- Cloud Save (optional) ----------
-// These stubs expect a tiny backend that exposes:
-//   POST /api/save body: { id: string, data: object }
-//   POST /api/load body: { id: string } -> { data: object }
-// You can implement with Firebase Functions, Supabase edge functions,
-// or a simple Node/Express server. Until you add a backend, these
-// will no-op gracefully.
-
+// Requires backend endpoints:
+//   POST /api/save  body: { id: string, data: object }
+//   POST /api/load  body: { id: string }
+// Works with Firebase Functions, Supabase edge functions, or a tiny Node server.
 async function cloudSave(){
   const id = ($("#cloudId").value || S.cloudId || "").trim();
   if (!id) return alert("Enter a Cloud ID first.");
@@ -589,12 +525,10 @@ async function cloudSave(){
     });
     if (!res.ok) throw new Error("Save failed");
     alert("Saved to cloud.");
-  } catch (e) {
-    console.warn(e);
+  } catch {
     alert("Cloud save requires a backend. See comments in game.js.");
   }
 }
-
 async function cloudLoad(){
   const id = ($("#cloudId").value || S.cloudId || "").trim();
   if (!id) return alert("Enter a Cloud ID first.");
@@ -608,16 +542,24 @@ async function cloudLoad(){
     const { data } = await res.json();
     if (!data) throw new Error("No data found for that ID");
     S = Object.assign(structuredClone(baseState), data);
-    ensureBuildings(S);
-    save(); renderAll();
+    ensureBuildings(S); save(); renderAll();
     alert("Loaded from cloud.");
-  } catch (e) {
-    console.warn(e);
+  } catch {
     alert("Cloud load requires a backend. See comments in game.js.");
   }
 }
 
 // ---------- Init ----------
+function applySettingsToUI(){
+  $("#reducedMotion").checked = !!S.reducedMotion;
+  $("#autosaveInterval").value = String(S.autosaveSeconds);
+  $("#numberFormat").value = S.numberFormat || "compact";
+  $("#themeToggle").checked = S.theme === "light";
+  $("#muteToggle").checked = !!S.muted;
+  $("#cloudId").value = S.cloudId || "";
+  document.body.classList.toggle("light", S.theme === "light");
+}
+
 function init(){
   ensureBuildings(S);
   load(); ensureBuildings(S);
@@ -625,9 +567,7 @@ function init(){
   renderAll();
   lastTick = performance.now();
   requestAnimationFrame(loop);
-  // Rebuild available upgrades every ~1s (cheap)
-  setInterval(renderUpgrades, 1000);
-  // Achievement pass every 2s
+  setInterval(renderUpgrades, 1000);   // show newly-eligible upgrades
   setInterval(checkAchievements, 2000);
 }
 init();
