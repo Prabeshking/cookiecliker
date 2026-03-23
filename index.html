@@ -1,24 +1,146 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Star Forge Clicker</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Star Forge Clicker</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="game.js"></script>
 </head>
 <body>
-
-    <h1>⭐ Star Forge Clicker ⭐</h1>
-
-    <div id="main">
-        <img id="clicker" src="https://via.placeholder.com/200" alt="Forge Core">
-        <p id="score">Energy: 0</p>
-        <p id="eps">EPS: 0</p>
+  <header class="topbar">
+    <h1>⭐ Star Forge Clicker</h1>
+    <div class="stats">
+      <span id="energyDisplay">Energy: 0</span>
+      <span id="epsDisplay">EPS: 0</span>
+      <span id="epcDisplay">EPC: 1</span>
+      <span id="prestigeDisplay">Starlight: 0 (x1.00)</span>
     </div>
+  </header>
 
-    <h2>Buildings</h2>
-    <div id="store"></div>
+  <main class="layout">
+    <!-- LEFT: Big click target & actions -->
+    <section class="pane left">
+      <div class="click-wrap">
+        <button id="clicker" aria-label="Tap to forge energy">
+          <!-- Original SVG “core” -->
+          <svg viewBox="0 0 200 200" width="220" height="220">
+            <defs>
+              <radialGradient id="g" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#6ff3ff"/>
+                <stop offset="60%" stop-color="#2cb3ff"/>
+                <stop offset="100%" stop-color="#0e2b5c"/>
+              </radialGradient>
+            </defs>
+            <circle cx="100" cy="100" r="90" fill="url(#g)" />
+            <circle cx="100" cy="100" r="60" fill="rgba(255,255,255,0.06)"/>
+            <circle cx="100" cy="100" r="6" fill="#b7f3ff"/>
+          </svg>
+        </button>
+      </div>
 
-    <script src="game.js"></script>
+      <div class="quick-row">
+        <button id="saveBtn">Save</button>
+        <button id="exportBtn">Export</button>
+        <button id="importBtn">Import</button>
+        <button id="hardResetBtn" class="danger">Hard Reset</button>
+      </div>
 
+      <div class="import-area" id="importArea" hidden>
+        <textarea id="importText" placeholder="Paste exported save here"></textarea>
+        <div class="quick-row">
+          <button id="confirmImportBtn">Confirm Import</button>
+          <button id="cancelImportBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div class="prestige">
+        <h3>Prestige: Transcend</h3>
+        <p>Convert progress into <strong>Starlight</strong> for a permanent production boost.</p>
+        <p>You would gain: <strong id="prestigeGainPreview">0</strong> Starlight now.</p>
+        <button id="prestigeBtn">Transcend (Soft Reset)</button>
+      </div>
+
+      <div id="floatingTexts" aria-hidden="true"></div>
+      <div id="eventArea"></div>
+    </section>
+
+    <!-- RIGHT: Store / Upgrades / Achievements / Settings -->
+    <section class="pane right">
+      <div class="tabs">
+        <button class="tab active" data-tab="store">Store</button>
+        <button class="tab" data-tab="upgrades">Upgrades</button>
+        <button class="tab" data-tab="achievements">Achievements</button>
+        <button class="tab" data-tab="settings">Settings</button>
+      </div>
+
+      <div class="tab-content active" id="storeTab">
+        <div class="bulk-row">
+          <button class="bulkBtn active" data-bulk="1">x1</button>
+          <button class="bulkBtn" data-bulk="10">x10</button>
+          <button class="bulkBtn" data-bulk="100">x100</button>
+          <button class="sellBtn" id="sellToggle">Sell</button>
+        </div>
+        <div id="store"></div>
+      </div>
+
+      <div class="tab-content" id="upgradesTab">
+        <div id="upgrades"></div>
+      </div>
+
+      <div class="tab-content" id="achievementsTab">
+        <div id="achievements" class="grid"></div>
+      </div>
+
+      <div class="tab-content" id="settingsTab">
+        <div class="settings-grid">
+          <label>
+            <input type="checkbox" id="reducedMotion" />
+            Reduce animations
+          </label>
+
+          <label>
+            Autosave:
+            <select id="autosaveInterval">
+              <option value="10">Every 10s</option>
+              <option value="30">Every 30s</option>
+              <option value="60">Every 60s</option>
+            </select>
+          </label>
+
+          <label>
+            Number format:
+            <select id="numberFormat">
+              <option value="compact">Compact (1.2M)</option>
+              <option value="full">Full (1,234,567)</option>
+              <option value="scientific">Scientific (1.23e6)</option>
+            </select>
+          </label>
+
+          <label>
+            <input type="checkbox" id="themeToggle" />
+            Light mode
+          </label>
+
+          <label>
+            <input type="checkbox" id="muteToggle" />
+            Mute sounds
+          </label>
+
+          <!-- Cloud save (optional; needs a backend) -->
+          <div class="cloud-row">
+            <input id="cloudId" placeholder="Cloud ID (choose any id)" />
+            <button id="cloudSaveBtn">Cloud Save</button>
+            <button id="cloudLoadBtn">Cloud Load</button>
+          </div>
+          <small class="muted">Cloud save requires a tiny backend; stubs are included in game.js.</small>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="tiny">
+    <span>Original assets & code © You — feel free to use/modify.</span>
+  </footer>
 </body>
 </html>
